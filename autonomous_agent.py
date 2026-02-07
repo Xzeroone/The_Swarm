@@ -95,7 +95,7 @@ class PersistentMemory:
         # Initialize memory structure
         if not self.memory_path.exists():
             self._write({
-                "version": 1,
+                "version": 0,  # Will become 1 after _write increments
                 "skills": [],
                 "failures": [],
                 "directives": [],
