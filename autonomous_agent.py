@@ -304,9 +304,10 @@ class PythonExecutor:
 class AgentTool:
     """Base class for agent tools that LLM can invoke."""
     
-    def __init__(self, name: str, description: str):
+    def __init__(self, name: str, description: str, tool_type: str = None):
         self.name = name
         self.description = description
+        self.tool_type = tool_type  # "think", "do", or None for legacy
     
     def execute(self, **kwargs) -> dict:
         """Execute the tool and return result."""
@@ -319,7 +320,8 @@ class PlanTool(AgentTool):
     def __init__(self, llm, memory, safety):
         super().__init__(
             name="plan_skill",
-            description="Plan and generate Python code for a skill based on the goal. Returns generated code."
+            description="Plan and generate Python code for a skill based on the goal. Returns generated code.",
+            tool_type="think"
         )
         self.llm = llm
         self.memory = memory
@@ -390,7 +392,8 @@ class WriteTool(AgentTool):
     def __init__(self):
         super().__init__(
             name="write_skill",
-            description="Write skill code to a file in the skills directory. Returns success status."
+            description="Write skill code to a file in the skills directory. Returns success status.",
+            tool_type="do"
         )
     
     def execute(self, skill_name: str, code: str) -> dict:
@@ -418,7 +421,8 @@ class TestTool(AgentTool):
     def __init__(self, executor, memory):
         super().__init__(
             name="test_skill",
-            description="Execute skill code and return test results. Returns success status and output."
+            description="Execute skill code and return test results. Returns success status and output.",
+            tool_type="do"
         )
         self.executor = executor
         self.memory = memory
@@ -458,7 +462,8 @@ class AnalyzeTool(AgentTool):
     def __init__(self, llm):
         super().__init__(
             name="analyze_results",
-            description="Analyze test results to determine if skill is working. Returns analysis and success status."
+            description="Analyze test results to determine if skill is working. Returns analysis and success status.",
+            tool_type="think"
         )
         self.llm = llm
     
@@ -497,7 +502,8 @@ class MemoryTool(AgentTool):
     def __init__(self, memory):
         super().__init__(
             name="memory_ops",
-            description="Perform memory operations: add_skill, get_memory, get_failures. Returns operation result."
+            description="Perform memory operations: add_skill, get_memory, get_failures. Returns operation result.",
+            tool_type="do"
         )
         self.memory = memory
     
@@ -686,6 +692,22 @@ class AutonomousAgent:
         
         print(f"✓ Agent initialized with model: {OLLAMA_MODEL}")
         print(f"✓ Mode: {self.mode}")
+    
+    def get_tools_by_type(self, tool_type: str) -> dict:
+        """
+        Get tools filtered by type.
+        
+        Args:
+            tool_type: Type of tools to filter ("think", "do", or None for legacy)
+            
+        Returns:
+            Dictionary of tools matching the specified type
+        """
+        return {
+            name: tool 
+            for name, tool in self.tools.items() 
+            if tool.tool_type == tool_type
+        }
     
     # ========================================================================
     # NODE: Plan Skill (FOR GRAPH MODE)
