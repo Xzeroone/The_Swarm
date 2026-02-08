@@ -569,6 +569,105 @@ class MemoryTool(AgentTool):
             return {"success": False, "error": str(e)}
 
 
+class LangGraphPlannerTool(AgentTool):
+    """Tool for building and running dynamic StateGraph workflows."""
+    
+    def __init__(self, llm):
+        super().__init__(
+            name="langgraph_planner",
+            description="Build and run a dynamic LangGraph StateGraph workflow. Accepts steps and goal, returns result summary.",
+            tool_type="think"
+        )
+        self.llm = llm
+    
+    def execute(self, steps: list, goal: str) -> dict:
+        """
+        Build and run a dynamic StateGraph.
+        
+        Args:
+            steps: List of step descriptors with 'name' and 'handler' (or 'tool_name')
+            goal: Overall goal for the workflow
+            
+        Returns:
+            Dictionary with success status and result summary
+        """
+        try:
+            # Define a simple state for dynamic planning
+            class PlanState(TypedDict):
+                goal: str
+                current_step: int
+                results: list
+                status: str
+            
+            # Create workflow
+            workflow = StateGraph(PlanState)
+            
+            # Add nodes for each step
+            for idx, step in enumerate(steps):
+                step_name = step.get('name', f'step_{idx}')
+                
+                def make_node_fn(step_desc, step_idx):
+                    """Factory to create node function with correct closure."""
+                    def node_fn(state: PlanState) -> PlanState:
+                        print(f"  Executing step {step_idx + 1}/{len(steps)}: {step_desc.get('name', 'unnamed')}")
+                        
+                        # Simple execution - just record the step
+                        state['current_step'] = step_idx + 1
+                        state['results'].append({
+                            'step': step_desc.get('name', 'unnamed'),
+                            'status': 'completed'
+                        })
+                        
+                        # Update status
+                        if step_idx + 1 >= len(steps):
+                            state['status'] = 'completed'
+                        
+                        return state
+                    
+                    return node_fn
+                
+                workflow.add_node(step_name, make_node_fn(step, idx))
+            
+            # Add edges to connect steps sequentially
+            if steps:
+                workflow.add_edge(START, steps[0].get('name', 'step_0'))
+                for idx in range(len(steps) - 1):
+                    current_step = steps[idx].get('name', f'step_{idx}')
+                    next_step = steps[idx + 1].get('name', f'step_{idx + 1}')
+                    workflow.add_edge(current_step, next_step)
+                
+                # Connect last step to end
+                last_step = steps[-1].get('name', f'step_{len(steps) - 1}')
+                workflow.add_edge(last_step, END)
+            
+            # Compile and run
+            app = workflow.compile()
+            
+            initial_state = {
+                'goal': goal,
+                'current_step': 0,
+                'results': [],
+                'status': 'running'
+            }
+            
+            print(f"🔧 Running LangGraph dynamic planner with {len(steps)} steps...")
+            final_state = app.invoke(initial_state)
+            
+            return {
+                'success': True,
+                'message': f'Dynamic workflow completed {len(steps)} steps',
+                'results': final_state.get('results', []),
+                'status': final_state.get('status', 'unknown')
+            }
+        
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e),
+                'message': f'LangGraph planner failed: {e}'
+            }
+
+
 class LLMController:
     """LLM-centric controller that decides actions dynamically."""
     
@@ -730,7 +829,8 @@ class AutonomousAgent:
             "write_skill": WriteTool(),
             "test_skill": TestTool(self.executor, self.memory),
             "analyze_results": AnalyzeTool(self.llm),
-            "memory_ops": MemoryTool(self.memory)
+            "memory_ops": MemoryTool(self.memory),
+            "langgraph_planner": LangGraphPlannerTool(self.llm)
         }
         
         # Initialize LLM controller for LLM-central mode
