@@ -1,20 +1,45 @@
-# Autonomous Self-Improving Agent
+# Autonomous Self-Improving Agent (The Swarm)
 
-Production-ready autonomous agent built with **Ollama** for Ubuntu 24.04. Features **LLM-driven autonomy**, tiered safety, persistent memory, self-improvement through iterative skill development, **framework registry**, **tool classification**, and **DIRECT_ANSWER capability**.
+[![GitHub release](https://img.shields.io/github/v/release/Xzeroone/The_Swarm?include_prereleases)](https://github.com/Xzeroone/The_Swarm/releases)
+[![GitHub stars](https://img.shields.io/github/stars/Xzeroone/The_Swarm?style=social)](https://github.com/Xzeroone/The_Swarm/stargazers)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-## 🎯 Key Features
+> A production-grade autonomous agent that writes, tests, and improves its own code using local LLMs via Ollama.
+
+## Why This Matters
+
+Most AI agents can only respond with text. This one can:
+- **Write real Python code** to files
+- **Test and validate** its own code
+- **Learn from failures** and iterate
+- **Persist skills** across sessions
+- **Run 100% locally** - no API keys required
+
+**One-line install. Zero config to start. Works offline.**
+
+## What It Does
 
 - **🧠 LLM as Brain**: LLM decides all actions dynamically (llm-central mode, default)
 - **📊 LangGraph as Tool**: Graph-based workflow coordination available when needed
 - **🔄 Dual Modes**: Switch between LLM-central (autonomous) and graph (structured) modes
 - **🛡️ Tiered Safety**: Requires approval for system-level operations
-- **🧠 Persistent Memory**: OpenCLAW-style JSON memory survives restarts
+- **🧠 Persistent Memory**: Skills survive restarts in JSON memory
 - **🔄 Self-Improvement Loop**: Learns from failures, iterates until success
-- **⚡ Ollama-Powered**: Local LLM inference with qwen3-coder or glm-4.7-flash
-- **🔧 Framework Registry**: Reusable code generation components (NEW)
-- **🏷️ Tool Classification**: THINK vs DO tool organization (NEW)
-- **💬 DIRECT_ANSWER**: LLM can respond without invoking tools (NEW)
-- **🕸️ Dynamic Planner**: LangGraph-based dynamic workflow execution (NEW)
+- **⚡ Ollama-Powered**: Local LLM inference with qwen2.5-coder:3b (recommended) or qwen3-coder
+- **🔧 Framework Registry**: Reusable code generation components
+- **🏷️ Tool Classification**: THINK vs DO tool organization
+
+## Comparison
+
+| Feature | The Swarm | AutoGPT | BabyAGI | LangChain Agent |
+|---------|-----------|---------|---------|-----------------|
+| Writes executable code | ✅ | ❌ | ❌ | Varies |
+| Tests its own code | ✅ | ❌ | ❌ | ❌ |
+| Learns from failures | ✅ | ❌ | ❌ | ❌ |
+| 100% local/offline | ✅ | ❌ | ❌ | Varies |
+| Zero API keys required | ✅ | ❌ | ❌ | ❌ |
+| Lightweight (<2GB) | ✅ | ❌ | ❌ | Varies |
 
 ## 🏗️ Architecture Philosophy
 
@@ -90,34 +115,47 @@ Fixed workflow orchestrated by LangGraph. Each step is predetermined, but the LL
 ## 🚀 Quick Start
 
 ```bash
-# 1. Clone/download the files
-cd autonomous-agent/
+# 1. Clone the repo
+git clone https://github.com/Xzeroone/The_Swarm.git
+cd The_Swarm
 
-# 2. Run automated setup
-./setup.sh
+# 2. Install Ollama and pull model (one-time setup)
+curl -fsSL https://ollama.com/install.sh | sh
+ollama pull qwen2.5-coder:3b  # Lightweight 2GB model (recommended)
 
-# 3. Activate environment
+# 3. Create venv and install dependencies
+python3 -m venv venv
 source venv/bin/activate
+pip install -r requirements.txt
 
-# 4. Start the agent (LLM-central mode by default)
+# 4. Run a directive (non-interactive)
+python3 autonomous_agent.py -d "Create a hello_world function"
+
+# OR start interactive mode
 python3 autonomous_agent.py
-
-# OR use legacy graph mode
-python3 autonomous_agent.py --graph
 ```
 
-> **Note**: The default model is `qwen3-coder`. For faster performance or limited resources, see [MODEL_GUIDE.md](MODEL_GUIDE.md) to switch to `glm-4.7-flash`.
+> **Recommended Model**: `qwen2.5-coder:3b` (~2GB, fast, good reasoning). For best quality use `qwen3-coder` (~18GB, slower).
 
 ## 📋 Prerequisites
 
-- **OS**: Ubuntu 24.04 LTS
+- **OS**: Linux (Ubuntu 24.04 recommended) or macOS
 - **Python**: 3.11+
-- **RAM**: 4GB+ recommended
-- **Disk**: 10GB+ free space
+- **RAM**: 4GB+ (8GB+ for larger models)
+- **Disk**: 5GB+ for lightweight model, 20GB+ for full models
 
 ## 🎮 Usage Examples
 
-### Interactive Mode (LLM-Central)
+### Non-Interactive Mode (Recommended for CI/CD)
+```bash
+# Run a single directive and exit
+python3 autonomous_agent.py -d "Create a factorial function"
+
+# Use graph mode
+python3 autonomous_agent.py --graph -d "Create a CSV parser"
+```
+
+### Interactive Mode
 ```bash
 $ python3 autonomous_agent.py
 
@@ -136,14 +174,12 @@ Agent> :skills
 Skills (1):
   ✅ json_validator: Create a JSON validator skill
 
-Agent> :mode graph       # Switch to graph mode
-✓ Switched to graph mode
-
-Agent> :directive Create a CSV parser
-📊 GRAPH MODE: LangGraph orchestrates fixed workflow
-🧠 PLANNING: Create a CSV parser
-...
+Agent> :quit
 ```
+
+### CLI Options
+```bash
+python3 autonomous_agent.py --help
 
 ### Command-Line Mode Selection
 ```bash
