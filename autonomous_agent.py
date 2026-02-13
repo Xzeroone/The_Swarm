@@ -1418,6 +1418,130 @@ Be strict: only mark as SUCCESS if output shows clear success."""
 
 
 # ============================================================================
+# SWARM MODE
+# ============================================================================
+
+
+def run_swarm_mode(directive: str = None, offline: bool = False):
+    """Run in multi-model swarm mode."""
+    import sys
+
+    print("""
+╔═══════════════════════════════════════════════════════════════╗
+║   THE SWARM v2.0                                              ║
+║   Multi-Model Collaborative Agent                             ║
+║   Auto-Download | Voting | Offline-Capable                    ║
+╚═══════════════════════════════════════════════════════════════╝
+    """)
+
+    try:
+        from swarm.config import MODEL_CATALOG, TASK_REQUIREMENTS, HARDWARE_PROFILES
+        from swarm.hardware import HardwareDetector
+        from swarm.registry import ModelRegistry
+        from swarm.downloader import ModelDownloader
+        from swarm.uninstaller import ModelUninstaller
+        from swarm.selector import ModelSelector
+        from swarm.voter import SwarmVoter
+        from swarm.analyzer import TaskAnalyzer
+        from swarm.orchestrator import SwarmOrchestrator
+    except ImportError as e:
+        print(f"❌ Swarm modules not found: {e}")
+        print("   Make sure swarm/ directory exists with all modules")
+        sys.exit(1)
+
+    config = type(
+        "Config",
+        (),
+        {
+            "MODEL_CATALOG": MODEL_CATALOG,
+            "TASK_REQUIREMENTS": TASK_REQUIREMENTS,
+            "HARDWARE_PROFILES": HARDWARE_PROFILES,
+        },
+    )()
+
+    hardware = HardwareDetector()
+    registry = ModelRegistry()
+    downloader = ModelDownloader(registry, config)
+    uninstaller = ModelUninstaller(registry, config)
+    selector = ModelSelector(config, registry, downloader, hardware)
+    voter = SwarmVoter(config, selector)
+    analyzer = TaskAnalyzer(config)
+
+    orchestrator = SwarmOrchestrator(
+        config, hardware, registry, downloader, uninstaller, selector, voter, analyzer
+    )
+
+    if offline:
+        print("📡 Offline mode - using only installed models\n")
+
+    if directive:
+        result = orchestrator.run(directive, offline=offline)
+
+        if result["success"]:
+            print(f"\n✅ Success in {result['iterations']} iterations")
+            sys.exit(0)
+        else:
+            print(f"\n❌ Failed: {result.get('error', 'Unknown error')}")
+            sys.exit(1)
+
+    else:
+        print("\nCommands:")
+        print("  <goal>              - Run a task")
+        print("  :models             - Show installed models")
+        print("  :cleanup            - Remove unused models")
+        print("  :hardware           - Show hardware info")
+        print("  :quit               - Exit")
+        print()
+
+        while True:
+            try:
+                user_input = input("Swarm> ").strip()
+
+                if not user_input:
+                    continue
+
+                if user_input == ":quit":
+                    break
+
+                elif user_input == ":models":
+                    models = registry.get_installed_models()
+                    print(f"Installed models ({len(models)}):")
+                    for m in models:
+                        swarm_mark = " 🐝" if registry.is_swarm_downloaded(m) else ""
+                        usage = registry.get_usage_count(m)
+                        print(f"  - {m}{swarm_mark} (used {usage}x)")
+
+                elif user_input == ":cleanup":
+                    removed = uninstaller.cleanup_unused()
+                    print(f"Removed {removed} unused models")
+
+                elif user_input == ":hardware":
+                    hw = hardware.detect()
+                    profile = hardware.get_profile()
+                    print(f"Hardware profile: {profile}")
+                    print(
+                        f"  RAM: {hw['total_ram_gb']:.1f}GB total, {hw['available_ram_gb']:.1f}GB available"
+                    )
+                    print(f"  CPU cores: {hw['cpu_cores']}")
+                    print(f"  Free disk: {hw['free_disk_gb']:.1f}GB")
+                    print(f"  Parallel capacity: {hw['max_parallel_models']} models")
+
+                else:
+                    result = orchestrator.run(user_input, offline=offline)
+
+                    if result["success"]:
+                        print(f"✅ Done in {result['iterations']} iterations")
+                    else:
+                        print(f"❌ Failed: {result.get('error')}")
+
+            except EOFError:
+                break
+            except KeyboardInterrupt:
+                print("\nInterrupted")
+                break
+
+
+# ============================================================================
 # CLI INTERFACE
 # ============================================================================
 
@@ -1430,6 +1554,8 @@ def main():
     mode = AGENT_MODE  # Default from config
     directive = None
     non_interactive = False
+    swarm_mode = False
+    offline_mode = False
 
     args = sys.argv[1:]
     i = 0
@@ -1447,18 +1573,26 @@ def main():
         elif arg == "--llm-central":
             mode = "llm-central"
             i += 1
+        elif arg == "--swarm":
+            swarm_mode = True
+            i += 1
+        elif arg == "--offline":
+            offline_mode = True
+            i += 1
         elif arg in ["--non-interactive", "-n"]:
             non_interactive = True
             i += 1
         elif arg in ["--help", "-h"]:
             print("""
-Autonomous Self-Improving Agent
+Autonomous Self-Improving Agent (The Swarm)
 
 Usage: python3 autonomous_agent.py [OPTIONS]
 
 Options:
   --mode, -m <mode>       Set mode (llm-central or graph)
   --directive, -d <goal>  Run a directive and exit
+  --swarm                 Enable multi-model swarm mode
+  --offline               Offline mode - don't download new models
   --non-interactive, -n   Exit after completing directive
   --graph                 Use graph mode
   --llm-central           Use LLM-central mode (default)
@@ -1466,8 +1600,9 @@ Options:
 
 Examples:
   python3 autonomous_agent.py                              # Interactive mode
-  python3 autonomous_agent.py -d "Create a hello world" -n # Run once and exit
-  python3 autonomous_agent.py --graph                      # Graph mode
+  python3 autonomous_agent.py -d "Create hello world"      # Single task
+  python3 autonomous_agent.py --swarm -d "Create API"      # Swarm mode
+  python3 autonomous_agent.py --swarm --offline -d "test"  # Offline swarm
 """)
             sys.exit(0)
         else:
@@ -1476,6 +1611,11 @@ Examples:
     # Auto-enable non-interactive if directive is provided
     if directive:
         non_interactive = True
+
+    # Swarm mode
+    if swarm_mode:
+        run_swarm_mode(directive, offline_mode)
+        return
 
     print(f"""
 ╔═══════════════════════════════════════════════════════════════╗

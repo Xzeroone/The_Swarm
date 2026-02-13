@@ -11,6 +11,9 @@ ollama>=0.5.3
 # Pydantic for data validation
 pydantic>=2.5.0,<3.0.0
 
+# System monitoring for swarm mode
+psutil>=5.9.0
+
 # Optional: File monitoring
 watchdog==3.0.0
 
