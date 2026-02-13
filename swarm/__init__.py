@@ -9,6 +9,15 @@ A lightweight multi-model agent system that:
 """
 
 from .config import MODEL_CATALOG, TASK_REQUIREMENTS, HARDWARE_PROFILES
+from .config_default import (
+    load_config,
+    save_config,
+    show_config,
+    get_recommended_model,
+    detect_hardware_profile,
+    CONFIG_DIR,
+    CONFIG_FILE,
+)
 from .hardware import HardwareDetector
 from .registry import ModelRegistry
 from .downloader import ModelDownloader
@@ -22,6 +31,13 @@ __all__ = [
     "MODEL_CATALOG",
     "TASK_REQUIREMENTS",
     "HARDWARE_PROFILES",
+    "load_config",
+    "save_config",
+    "show_config",
+    "get_recommended_model",
+    "detect_hardware_profile",
+    "CONFIG_DIR",
+    "CONFIG_FILE",
     "HardwareDetector",
     "ModelRegistry",
     "ModelDownloader",
