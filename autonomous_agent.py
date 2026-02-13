@@ -1422,15 +1422,17 @@ Be strict: only mark as SUCCESS if output shows clear success."""
 # ============================================================================
 
 
-def run_swarm_mode(directive: str = None, offline: bool = False):
+def run_swarm_mode(
+    directive: str = None, offline: bool = False, force_mode: str = None
+):
     """Run in multi-model swarm mode."""
     import sys
 
     print("""
 ╔═══════════════════════════════════════════════════════════════╗
-║   THE SWARM v2.0                                              ║
+║   THE SWARM v2.1                                              ║
 ║   Multi-Model Collaborative Agent                             ║
-║   Auto-Download | Voting | Offline-Capable                    ║
+║   Auto-Download | Voting | Chat + Task                        ║
 ╚═══════════════════════════════════════════════════════════════╝
     """)
 
@@ -1475,7 +1477,7 @@ def run_swarm_mode(directive: str = None, offline: bool = False):
         print("📡 Offline mode - using only installed models\n")
 
     if directive:
-        result = orchestrator.run(directive, offline=offline)
+        result = orchestrator.run(directive, offline=offline, force_mode=force_mode)
 
         if result["success"]:
             print(f"\n✅ Success in {result['iterations']} iterations")
@@ -1556,6 +1558,7 @@ def main():
     non_interactive = False
     swarm_mode = False
     offline_mode = False
+    force_mode = None
 
     args = sys.argv[1:]
     i = 0
@@ -1579,6 +1582,9 @@ def main():
         elif arg == "--offline":
             offline_mode = True
             i += 1
+        elif arg == "--force-mode" and i + 1 < len(args):
+            force_mode = args[i + 1]
+            i += 2
         elif arg in ["--non-interactive", "-n"]:
             non_interactive = True
             i += 1
@@ -1614,7 +1620,7 @@ Examples:
 
     # Swarm mode
     if swarm_mode:
-        run_swarm_mode(directive, offline_mode)
+        run_swarm_mode(directive, offline_mode, force_mode)
         return
 
     print(f"""

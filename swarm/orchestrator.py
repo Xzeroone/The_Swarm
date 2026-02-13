@@ -9,6 +9,9 @@ import subprocess
 import tempfile
 import os
 
+from .intent import classify_intent
+from .conversation import ConversationManager
+
 
 class SwarmOrchestrator:
     MAX_ITERATIONS = 12
@@ -32,18 +35,30 @@ class SwarmOrchestrator:
         self.selector = selector
         self.voter = voter
         self.analyzer = analyzer
+        self.conversation = ConversationManager()
 
-    def run(self, goal: str, offline: bool = False) -> Dict:
+    def run(self, goal: str, offline: bool = False, force_mode: str = None) -> Dict:
         """
         Run the swarm on a goal.
 
         Args:
-            goal: The task to accomplish
+            goal: The task to accomplish or question to answer
             offline: If True, don't download new models
+            force_mode: "task" or "chat" to override auto-detection
 
         Returns:
-            {"success": bool, "result": str, "iterations": int}
+            {"success": bool, "result": str, "iterations": int, "type": str}
         """
+        # Determine intent
+        if force_mode:
+            intent = force_mode
+        else:
+            intent = classify_intent(goal)
+
+        if intent == "chat":
+            return self._chat(goal, offline)
+
+        # Task mode
         profile = self.hardware.get_profile()
         print(f"🖥️ Hardware profile: {profile}")
 
@@ -59,11 +74,51 @@ class SwarmOrchestrator:
                 "success": False,
                 "error": "No suitable model available",
                 "iterations": 0,
+                "type": "task",
             }
 
         print(f"🤖 Using coder model: {coder_model}")
 
         return self._run_loop(goal, coder_model, task_info, offline)
+
+    def _chat(self, question: str, offline: bool) -> Dict:
+        """Answer question directly with conversation history."""
+        model = self.selector.select_router(offline=offline)
+
+        print(f"💬 Chat mode (using {model})")
+        print()
+
+        # Add user message to history
+        self.conversation.add("user", question)
+
+        # Get messages for context
+        messages = self.conversation.get_messages(include_system=True)
+
+        try:
+            response = ollama.chat(
+                model=model, messages=messages, options={"temperature": 0.7}
+            )
+
+            answer = response["message"]["content"]
+
+            # Add assistant response to history
+            self.conversation.add("assistant", answer)
+
+            print(answer)
+
+            return {
+                "success": True,
+                "type": "chat",
+                "response": answer,
+                "iterations": 1,
+            }
+        except Exception as e:
+            return {"success": False, "type": "chat", "error": str(e), "iterations": 0}
+
+    def clear_conversation(self):
+        """Clear conversation history."""
+        self.conversation.clear()
+        print("✓ Conversation history cleared")
 
     def _run_loop(
         self, goal: str, coder_model: str, task_info: Dict, offline: bool

@@ -19,27 +19,44 @@ NC='\033[0m' # No Color
 # Help function
 show_help() {
     cat << 'EOF'
-The Swarm v2.0 - Multi-Model Collaborative Agent
+The Swarm v2.1 - Multi-Model Collaborative Agent
 
 Usage:
-  swarm "<task>"              Run a task in swarm mode
-  swarm --offline "<task>"    Run without downloading models
-  swarm --model <name> "<task>"  Use specific model
-  swarm                       Interactive mode
-  swarm config                Show config
-  swarm config set <key> <val>  Set config option
-  swarm models                List installed models
-  swarm models download <n>   Download a model
-  swarm models cleanup        Remove unused models
-  swarm hardware              Show hardware info
-  swarm update                Update to latest version
-  swarm --help                Show this help
+  swarm "<input>"              Auto-detect: task or chat
+  swarm --chat "<question>"    Force chat mode (answers questions)
+  swarm --task "<task>"        Force task mode (creates code)
+  swarm --offline "<input>"    Run without downloading models
+  swarm --clear                Clear conversation history
+  swarm                        Interactive mode
+
+Config:
+  swarm config                 Show config
+  swarm config set <key> <val> Set config option
+
+Models:
+  swarm models                 List installed models
+  swarm models download <name> Download a model
+  swarm models cleanup         Remove unused models
+
+Other:
+  swarm hardware               Show hardware info
+  swarm update                 Update to latest version
+  swarm --help                 Show this help
 
 Examples:
+  # Auto-detect (chat - no action verb)
+  swarm "What is Python?"
+  
+  # Auto-detect (task - has action verb)
   swarm "Create a hello_world function"
+  
+  # Force modes
+  swarm --chat "Explain recursion"
+  swarm --task "Write a sorting algorithm"
+  
+  # With options
   swarm --offline "Create fibonacci"
-  swarm --model qwen2.5-coder:3b "Complex task"
-  swarm config set offline_mode true
+  swarm --clear  # Clear chat history
 
 Config file: ~/.swarm-config/config.json
 EOF
@@ -191,6 +208,7 @@ update_swarm() {
 OFFLINE=""
 MODEL=""
 TASK=""
+FORCE_MODE=""
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -200,6 +218,25 @@ while [[ $# -gt 0 ]]; do
         --offline)
             OFFLINE="--offline"
             shift
+            ;;
+        --chat)
+            FORCE_MODE="--force-mode chat"
+            shift
+            ;;
+        --task)
+            FORCE_MODE="--force-mode task"
+            shift
+            ;;
+        --clear)
+            # Clear conversation history
+            HISTORY_FILE="$HOME/.swarm-config/conversation_history.json"
+            if [[ -f "$HISTORY_FILE" ]]; then
+                echo "[]" > "$HISTORY_FILE"
+                echo "✓ Conversation history cleared"
+            else
+                echo "No conversation history to clear"
+            fi
+            exit 0
             ;;
         --model|-m)
             MODEL="$2"
@@ -264,6 +301,10 @@ CMD="python3 $AGENT --swarm"
 
 if [[ -n "$OFFLINE" ]]; then
     CMD="$CMD $OFFLINE"
+fi
+
+if [[ -n "$FORCE_MODE" ]]; then
+    CMD="$CMD $FORCE_MODE"
 fi
 
 if [[ -n "$MODEL" ]]; then

@@ -6,6 +6,8 @@ A lightweight multi-model agent system that:
 - Uses parallel voting for decisions
 - Works offline with available models
 - Prefers smallest model that can do the job
+- Auto-detects intent (chat vs task)
+- Maintains conversation history
 """
 
 from .config import MODEL_CATALOG, TASK_REQUIREMENTS, HARDWARE_PROFILES
@@ -26,6 +28,8 @@ from .selector import ModelSelector
 from .voter import SwarmVoter
 from .analyzer import TaskAnalyzer
 from .orchestrator import SwarmOrchestrator
+from .intent import classify_intent, classify_intent_with_model
+from .conversation import ConversationManager
 
 __all__ = [
     "MODEL_CATALOG",
@@ -46,6 +50,9 @@ __all__ = [
     "SwarmVoter",
     "TaskAnalyzer",
     "SwarmOrchestrator",
+    "classify_intent",
+    "classify_intent_with_model",
+    "ConversationManager",
 ]
 
-__version__ = "2.0.0"
+__version__ = "2.1.0"
